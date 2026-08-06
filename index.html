@@ -171,7 +171,7 @@
     }
 
     .fwa-section {
-      width: 300px;
+      width: 380px;
       flex-shrink: 0;
       background: #1e2a45;
       border: 2px solid #ffd700;
@@ -423,8 +423,8 @@
       results.forEach((result) => {
         const value = (result.text || "").trim();
 
-        // Serial Number: 11 characters starting with 'A'
-        if (value.length === 11 && value.charAt(0).toUpperCase() === "A") {
+        // Serial Number: 11 characters starting with 'A', no dashes
+        if (value.length === 11 && value.charAt(0).toUpperCase() === "A" && !value.includes("-")) {
           fwaItems.push({ label: "Serial Number", value: value });
         }
 
@@ -480,7 +480,7 @@
 
     function drawOverlays(results) {
       ctx.lineWidth = Math.max(3, canvas.width / 200);
-      const fontSize = Math.max(16, canvas.width / 40);
+      const fontSize = Math.max(24, canvas.width / 25);
       ctx.font = "bold " + fontSize + "px sans-serif";
 
       results.forEach((result, i) => {
