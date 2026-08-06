@@ -471,8 +471,11 @@
         if (format.indexOf("qr") !== -1) {
           fwaItems.push({ label: "QR Code", value: value });
 
-          // Parse semicolon-delimited key:value pairs from QR data
-          var parts = value.split(";");
+          // Parse FWA data from QR code
+          // Look for ROUTER: section which contains the FWA key-value pairs
+          var routerMatch = value.match(/ROUTER:(.*)/i);
+          var fwaData = routerMatch ? routerMatch[1] : value;
+          var parts = fwaData.split(";");
           parts.forEach(function(part) {
             var colonIdx = part.indexOf(":");
             if (colonIdx < 1) return;
