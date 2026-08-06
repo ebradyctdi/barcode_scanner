@@ -217,21 +217,22 @@
       statusEl.className = "status " + (type || "");
     }
 
-    // Load the library on page init - try multiple CDNs for reliability
+    // Load the library on page init
     async function initLibrary() {
       setStatus("Loading barcode library...", "loading");
 
       const sources = [
-        "https://cdn.jsdelivr.net/npm/zxing-wasm@1/reader/+esm",
-        "https://esm.sh/zxing-wasm@1/reader",
-        "https://cdn.jsdelivr.net/npm/zxing-wasm@1/+esm",
+        "https://cdn.jsdelivr.net/npm/zxing-wasm@3/dist/es/reader/index.js",
+        "https://esm.sh/zxing-wasm@3/reader",
       ];
 
       for (const src of sources) {
         try {
+          console.log("Trying to load from:", src);
           const module = await import(src);
           readBarcodes = module.readBarcodes;
           if (readBarcodes) {
+            console.log("Successfully loaded from:", src);
             setStatus("Ready. Upload or take a photo.", "");
             return;
           }
