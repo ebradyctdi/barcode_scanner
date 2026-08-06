@@ -217,20 +217,33 @@
       statusEl.className = "status " + (type || "");
     }
 
-    // Load the library on page init
+    // Load the library on page init - try multiple CDNs for reliability
     async function initLibrary() {
       setStatus("Loading barcode library...", "loading");
-      try {
-        const module = await import("https://esm.sh/zxing-wasm@1/reader");
-        readBarcodes = module.readBarcodes;
-        setStatus("Ready. Upload or take a photo.", "");
-      } catch (err) {
-        console.error("Failed to load zxing-wasm:", err);
-        setStatus(
-          "Failed to load barcode library. Make sure this page is served over HTTP/HTTPS.",
-          "error"
-        );
+
+      const sources = [
+        "https://cdn.jsdelivr.net/npm/zxing-wasm@1/reader/+esm",
+        "https://esm.sh/zxing-wasm@1/reader",
+        "https://cdn.jsdelivr.net/npm/zxing-wasm@1/+esm",
+      ];
+
+      for (const src of sources) {
+        try {
+          const module = await import(src);
+          readBarcodes = module.readBarcodes;
+          if (readBarcodes) {
+            setStatus("Ready. Upload or take a photo.", "");
+            return;
+          }
+        } catch (err) {
+          console.warn("Failed to load from " + src, err);
+        }
       }
+
+      setStatus(
+        "Failed to load barcode library. Check your internet connection and reload.",
+        "error"
+      );
     }
 
     async function processImage(file) {
