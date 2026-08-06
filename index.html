@@ -160,6 +160,74 @@
       color: #00d4ff;
     }
 
+    .fwa-section {
+      width: 100%;
+      max-width: 700px;
+      margin-bottom: 1.5rem;
+      background: #1e2a45;
+      border: 2px solid #ffd700;
+      border-radius: 12px;
+      padding: 1.25rem;
+      display: none;
+    }
+
+    .fwa-section.visible {
+      display: block;
+    }
+
+    .fwa-section h2 {
+      font-size: 1.3rem;
+      margin-bottom: 1rem;
+      color: #ffd700;
+    }
+
+    .fwa-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #16213e;
+      border: 1px solid #444;
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .fwa-item:last-child {
+      margin-bottom: 0;
+    }
+
+    .fwa-label {
+      font-size: 0.8rem;
+      color: #ffd700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.2rem;
+    }
+
+    .fwa-value {
+      font-family: 'Courier New', monospace;
+      font-size: 1.1rem;
+      color: #fff;
+    }
+
+    .fwa-copy {
+      background: none;
+      border: 1px solid #555;
+      color: #aaa;
+      padding: 0.3rem 0.7rem;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      flex-shrink: 0;
+      margin-left: 1rem;
+    }
+
+    .fwa-copy:hover {
+      border-color: #ffd700;
+      color: #ffd700;
+    }
+
     .no-results {
       color: #666;
       text-align: center;
@@ -197,6 +265,8 @@
     <canvas id="canvas"></canvas>
   </div>
 
+  <div class="fwa-section" id="fwaSection"></div>
+
   <div class="results" id="results"></div>
 
   <p class="note">This page must be served over HTTP/HTTPS (e.g. GitHub Pages or a local server). It will not work when opened directly as a file.</p>
@@ -207,6 +277,7 @@
     const statusEl = document.getElementById("status");
     const previewContainer = document.getElementById("previewContainer");
     const canvas = document.getElementById("canvas");
+    const fwaSection = document.getElementById("fwaSection");
     const resultsDiv = document.getElementById("results");
     const ctx = canvas.getContext("2d");
 
@@ -256,6 +327,8 @@
 
       setStatus("Loading image...", "loading");
       resultsDiv.innerHTML = "";
+      fwaSection.innerHTML = "";
+      fwaSection.classList.remove("visible");
 
       const img = new Image();
       const url = URL.createObjectURL(file);
@@ -289,6 +362,7 @@
             "success"
           );
           displayResults(results);
+          displayFWA(results);
           drawOverlays(results);
         } catch (err) {
           console.error("Scan error:", err);
@@ -320,6 +394,67 @@
       resultsDiv.innerHTML = html;
 
       resultsDiv.querySelectorAll(".barcode-copy").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          navigator.clipboard.writeText(btn.dataset.value).then(() => {
+            btn.textContent = "Copied!";
+            setTimeout(() => { btn.textContent = "Copy"; }, 1500);
+          });
+        });
+      });
+    }
+
+    function displayFWA(results) {
+      const fwaItems = [];
+
+      results.forEach((result) => {
+        const value = (result.text || "").trim();
+
+        // Serial Number: 11 characters starting with 'A'
+        if (value.length === 11 && value.charAt(0).toUpperCase() === "A") {
+          fwaItems.push({ label: "Serial Number", value: value });
+        }
+
+        // IMEI: exactly 15 digits
+        if (/^\d{15}$/.test(value)) {
+          fwaItems.push({ label: "IMEI", value: value });
+        }
+
+        // ICCID: 19-20 digits
+        if (/^\d{19,20}$/.test(value)) {
+          fwaItems.push({ label: "ICCID", value: value });
+        }
+
+        // Model Type: known model strings
+        const models = ["WNC-CR200A", "ASK-NCM1100"];
+        if (models.includes(value.toUpperCase())) {
+          fwaItems.push({ label: "Model Type", value: value });
+        }
+
+        // QR Code: any barcode detected as QR format
+        const format = (result.format || "").toLowerCase();
+        if (format.includes("qr")) {
+          fwaItems.push({ label: "QR Code", value: value });
+        }
+      });
+
+      if (fwaItems.length === 0) {
+        fwaSection.classList.remove("visible");
+        return;
+      }
+
+      let html = "<h2>&#9889; FWA Values</h2>";
+      fwaItems.forEach((item) => {
+        html += '<div class="fwa-item">';
+        html += '<div><div class="fwa-label">' + escapeHtml(item.label) + '</div>';
+        html += '<div class="fwa-value">' + escapeHtml(item.value) + "</div></div>";
+        html += '<button class="fwa-copy" data-value="' + escapeAttr(item.value) + '">Copy</button>';
+        html += "</div>";
+      });
+
+      fwaSection.innerHTML = html;
+      fwaSection.classList.add("visible");
+
+      fwaSection.querySelectorAll(".fwa-copy").forEach((btn) => {
         btn.addEventListener("click", () => {
           navigator.clipboard.writeText(btn.dataset.value).then(() => {
             btn.textContent = "Copied!";
