@@ -496,6 +496,26 @@
         const format = (result.format || "").toLowerCase();
         if (format.includes("qr")) {
           fwaItems.push({ label: "QR Code", value: value });
+
+          // Parse semicolon-delimited key:value pairs from QR data
+          const parts = value.split(";");
+          parts.forEach((part) => {
+            const colonIdx = part.indexOf(":");
+            if (colonIdx < 1) return;
+            const key = part.substring(0, colonIdx).toUpperCase();
+            const val = part.substring(colonIdx + 1);
+            if (!val) return;
+
+            if (key === "M") {
+              fwaItems.push({ label: "Model Type (from QR)", value: val });
+            } else if (key === "S") {
+              fwaItems.push({ label: "Serial Number (from QR)", value: val });
+            } else if (key === "E") {
+              fwaItems.push({ label: "IMEI (from QR)", value: val });
+            } else if (key === "C") {
+              fwaItems.push({ label: "ICCID (from QR)", value: val });
+            }
+          });
         }
       });
 
