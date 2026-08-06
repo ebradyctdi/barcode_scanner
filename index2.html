@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Multi-Barcode Scanner</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #1a1a2e;
+      color: #eee;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem 1rem;
+    }
+
+    h1 {
+      font-size: 1.8rem;
+      margin-bottom: 0.5rem;
+      color: #00d4ff;
+    }
+
+    .subtitle {
+      color: #888;
+      margin-bottom: 2rem;
+      text-align: center;
+    }
+
+    .controls {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-bottom: 2rem;
+    }
+
+    .btn {
+      background: #16213e;
+      border: 2px solid #00d4ff;
+      color: #00d4ff;
+      padding: 0.75rem 1.5rem;
+      border-radius: 8px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: center;
+      display: inline-block;
+    }
+
+    .btn:hover {
+      background: #00d4ff;
+      color: #1a1a2e;
+    }
+
+    #fileInput {
+      display: none;
+    }
+
+    .camera-container {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 2rem;
+      width: 100%;
+      max-width: 640px;
+    }
+
+    .camera-container.visible {
+      display: flex;
+    }
+
+    .camera-container video {
+      width: 100%;
+      max-height: 50vh;
+      border-radius: 12px;
+      background: #000;
+    }
+
+    .camera-controls {
+      display: flex;
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+
+    .btn-cancel {
+      border-color: #ff4444;
+      color: #ff4444;
+    }
+
+    .btn-cancel:hover {
+      background: #ff4444;
+      color: #1a1a2e;
+    }
+
+    .preview-container {
+      position: relative;
+      max-width: 100%;
+      border-radius: 12px;
+      overflow: hidden;
+      display: none;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .preview-container.visible {
+      display: block;
+    }
+
+    .preview-container canvas {
+      max-width: 100%;
+      max-height: 60vh;
+      display: block;
+      border-radius: 12px;
+    }
+
+    .main-content {
+      display: flex;
+      gap: 1.5rem;
+      width: 100%;
+      max-width: 1100px;
+      margin-bottom: 2rem;
+      align-items: flex-start;
+    }
+
+    .status {
+      font-size: 1rem;
+      color: #aaa;
+      margin-bottom: 1rem;
+      text-align: center;
+      min-height: 1.5rem;
+    }
+
+    .status.loading {
+      color: #ffd700;
+    }
+
+    .status.error {
+      color: #ff4444;
+    }
+
+    .status.success {
+      color: #00ff88;
+    }
+
+    .results {
+      width: 100%;
+      max-width: 700px;
+    }
+
+    .results h2 {
+      font-size: 1.3rem;
+      margin-bottom: 1rem;
+      color: #00d4ff;
+    }
+
+    .barcode-card {
+      background: #16213e;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 0.75rem;
+      transition: border-color 0.2s;
+    }
+
+    .barcode-card:hover {
+      border-color: #00d4ff;
+    }
+
+    .barcode-format {
+      font-size: 0.8rem;
+      color: #00d4ff;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.25rem;
+    }
+
+    .barcode-value {
+      font-family: 'Courier New', monospace;
+      font-size: 1.1rem;
+      word-break: break-all;
+      color: #fff;
+    }
+
+    .barcode-copy {
+      margin-top: 0.5rem;
+      background: none;
+      border: 1px solid #555;
+      color: #aaa;
+      padding: 0.3rem 0.7rem;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .barcode-copy:hover {
+      border-color: #00d4ff;
+      color: #00d4ff;
+    }
+
+    .fwa-section {
+      width: 380px;
+      flex-shrink: 0;
+      background: #1e2a45;
+      border: 2px solid #ffd700;
+      border-radius: 12px;
+      padding: 1.25rem;
+      display: none;
+    }
+
+    .fwa-section.visible {
+      display: block;
+    }
+
+    .fwa-section h2 {
+      font-size: 1.3rem;
+      margin-bottom: 1rem;
+      color: #ffd700;
+    }
+
+    .fwa-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #16213e;
+      border: 1px solid #444;
+      border-radius: 8px;
+      padding: 0.6rem 0.75rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .fwa-item:last-child {
+      margin-bottom: 0;
+    }
+
+    .fwa-label {
+      font-size: 0.8rem;
+      color: #ffd700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.2rem;
+    }
+
+    .fwa-value {
+      font-family: 'Courier New', monospace;
+      font-size: 0.95rem;
+      color: #fff;
+      word-break: break-all;
+    }
+
+    .fwa-copy {
+      background: none;
+      border: 1px solid #555;
+      color: #aaa;
+      padding: 0.3rem 0.7rem;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      flex-shrink: 0;
+      margin-left: 1rem;
+    }
+
+    .fwa-copy:hover {
+      border-color: #ffd700;
+      color: #ffd700;
+    }
+
+    .no-results {
+      color: #666;
+      text-align: center;
+      padding: 2rem;
+    }
+
+    @media (max-width: 768px) {
+      h1 { font-size: 1.4rem; }
+      .controls { flex-direction: column; align-items: stretch; }
+      .main-content { flex-direction: column; }
+      .fwa-section { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <h1>Multi-Barcode Scanner</h1>
+  <p class="subtitle">Upload or take a photo containing barcodes. All detected codes will be listed below.</p>
+
+  <div class="controls">
+    <label class="btn" for="fileInput">&#128193; Upload Image</label>
+    <input type="file" id="fileInput" accept="image/*">
+    <button class="btn" id="cameraBtn">&#128247; Take Photo</button>
+  </div>
+
+  <div class="camera-container" id="cameraContainer">
+    <video id="cameraVideo" autoplay playsinline></video>
+    <div class="camera-controls">
+      <button class="btn" id="captureBtn">&#128248; Capture</button>
+      <button class="btn btn-cancel" id="cancelCameraBtn">Cancel</button>
+    </div>
+  </div>
+
+  <div class="status" id="status"></div>
+
+  <div class="main-content" id="mainContent">
+    <div class="preview-container" id="previewContainer">
+      <canvas id="canvas"></canvas>
+    </div>
+
+    <div class="fwa-section" id="fwaSection"></div>
+  </div>
+
+  <div class="results" id="results"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/zxing-wasm@3/dist/iife/reader/index.js"></script>
+  <script>
+    var fileInput = document.getElementById("fileInput");
+    var cameraBtn = document.getElementById("cameraBtn");
+    var cameraContainer = document.getElementById("cameraContainer");
+    var cameraVideo = document.getElementById("cameraVideo");
+    var captureBtn = document.getElementById("captureBtn");
+    var cancelCameraBtn = document.getElementById("cancelCameraBtn");
+    var statusEl = document.getElementById("status");
+    var previewContainer = document.getElementById("previewContainer");
+    var canvas = document.getElementById("canvas");
+    var fwaSection = document.getElementById("fwaSection");
+    var resultsDiv = document.getElementById("results");
+    var ctx = canvas.getContext("2d");
+
+    var readBarcodes = null;
+    var cameraStream = null;
+
+    function setStatus(message, type) {
+      statusEl.textContent = message;
+      statusEl.className = "status " + (type || "");
+    }
+
+    function initLibrary() {
+      setStatus("Loading barcode library...", "loading");
+      try {
+        if (window.ZXingWASM && window.ZXingWASM.readBarcodes) {
+          readBarcodes = window.ZXingWASM.readBarcodes;
+          setStatus("Ready. Upload or take a photo.", "");
+        } else {
+          setStatus("Failed to load barcode library.", "error");
+        }
+      } catch (err) {
+        console.error("Init error:", err);
+        setStatus("Failed to load barcode library: " + err.message, "error");
+      }
+    }
+
+    function processImage(file) {
+      if (!file) return;
+      if (!readBarcodes) {
+        setStatus("Library not loaded yet. Please wait or reload.", "error");
+        return;
+      }
+
+      setStatus("Loading image...", "loading");
+      resultsDiv.innerHTML = "";
+      fwaSection.innerHTML = "";
+      fwaSection.classList.remove("visible");
+
+      var img = new Image();
+      var url = URL.createObjectURL(file);
+
+      img.onload = function() {
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        ctx.drawImage(img, 0, 0);
+        previewContainer.classList.add("visible");
+        URL.revokeObjectURL(url);
+
+        setStatus("Scanning for barcodes...", "loading");
+
+        var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+        readBarcodes(imageData, {
+          tryHarder: true,
+          formats: [],
+          maxNumberOfSymbols: 100,
+        }).then(function(results) {
+          if (results.length === 0) {
+            setStatus("No barcodes found. Try a clearer or larger image.", "error");
+            resultsDiv.innerHTML = '<p class="no-results">No barcodes detected in this image.</p>';
+            return;
+          }
+
+          setStatus(
+            "Found " + results.length + " barcode" + (results.length > 1 ? "s" : "") + "!",
+            "success"
+          );
+          displayResults(results);
+          displayFWA(results);
+          drawOverlays(results);
+        }).catch(function(err) {
+          console.error("Scan error:", err);
+          setStatus("Error scanning image: " + err.message, "error");
+        });
+      };
+
+      img.onerror = function() {
+        setStatus("Failed to load image.", "error");
+        URL.revokeObjectURL(url);
+      };
+
+      img.src = url;
+    }
+
+    function displayResults(results) {
+      var html = "<h2>Detected Barcodes (" + results.length + ")</h2>";
+
+      results.forEach(function(result, index) {
+        var format = result.format || "Unknown";
+        var value = result.text || "";
+        html += '<div class="barcode-card">';
+        html += '<div class="barcode-format">#' + (index + 1) + ' &mdash; ' + escapeHtml(format) + "</div>";
+        html += '<div class="barcode-value">' + escapeHtml(value) + "</div>";
+        html += '<button class="barcode-copy" data-value="' + escapeAttr(value) + '">Copy</button>';
+        html += "</div>";
+      });
+
+      resultsDiv.innerHTML = html;
+
+      resultsDiv.querySelectorAll(".barcode-copy").forEach(function(btn) {
+        btn.addEventListener("click", function() {
+          navigator.clipboard.writeText(btn.dataset.value).then(function() {
+            btn.textContent = "Copied!";
+            setTimeout(function() { btn.textContent = "Copy"; }, 1500);
+          });
+        });
+      });
+    }
+
+    function displayFWA(results) {
+      var fwaItems = [];
+
+      results.forEach(function(result) {
+        var value = (result.text || "").trim();
+
+        // Serial Number: 11 characters starting with 'A', no dashes
+        if (value.length === 11 && value.charAt(0).toUpperCase() === "A" && value.indexOf("-") === -1) {
+          fwaItems.push({ label: "Serial Number", value: value });
+        }
+
+        // IMEI: exactly 15 digits
+        if (/^\d{15}$/.test(value)) {
+          fwaItems.push({ label: "IMEI", value: value });
+        }
+
+        // ICCID: 19-20 digits
+        if (/^\d{19,20}$/.test(value)) {
+          fwaItems.push({ label: "ICCID", value: value });
+        }
+
+        // Model Type: known model strings
+        var models = ["WNC-CR200A", "ASK-NCM1100"];
+        if (models.indexOf(value.toUpperCase()) !== -1) {
+          fwaItems.push({ label: "Model Type", value: value });
+        }
+
+        // QR Code: any barcode detected as QR format
+        var format = (result.format || "").toLowerCase();
+        if (format.indexOf("qr") !== -1) {
+          fwaItems.push({ label: "QR Code", value: value });
+
+          // Parse FWA data from QR code
+          // Look for ROUTER: section which contains the FWA key-value pairs
+          var routerMatch = value.match(/ROUTER:(.*)/i);
+          var fwaData = routerMatch ? routerMatch[1] : value;
+          var parts = fwaData.split(";");
+          parts.forEach(function(part) {
+            var colonIdx = part.indexOf(":");
+            if (colonIdx < 1) return;
+            var key = part.substring(0, colonIdx).toUpperCase();
+            var val = part.substring(colonIdx + 1);
+            if (!val) return;
+
+            if (key === "M") {
+              fwaItems.push({ label: "Model Type (from QR)", value: val });
+            } else if (key === "S") {
+              fwaItems.push({ label: "Serial Number (from QR)", value: val });
+            } else if (key === "E") {
+              fwaItems.push({ label: "IMEI (from QR)", value: val });
+            } else if (key === "C") {
+              fwaItems.push({ label: "ICCID (from QR)", value: val });
+            }
+          });
+        }
+      });
+
+      if (fwaItems.length === 0) {
+        fwaSection.classList.remove("visible");
+        return;
+      }
+
+      var html = "<h2>&#9889; FWA Values</h2>";
+      fwaItems.forEach(function(item) {
+        html += '<div class="fwa-item">';
+        html += '<div><div class="fwa-label">' + escapeHtml(item.label) + '</div>';
+        html += '<div class="fwa-value">' + escapeHtml(item.value) + "</div></div>";
+        html += '<button class="fwa-copy" data-value="' + escapeAttr(item.value) + '">Copy</button>';
+        html += "</div>";
+      });
+
+      fwaSection.innerHTML = html;
+      fwaSection.classList.add("visible");
+
+      fwaSection.querySelectorAll(".fwa-copy").forEach(function(btn) {
+        btn.addEventListener("click", function() {
+          navigator.clipboard.writeText(btn.dataset.value).then(function() {
+            btn.textContent = "Copied!";
+            setTimeout(function() { btn.textContent = "Copy"; }, 1500);
+          });
+        });
+      });
+    }
+
+    function drawOverlays(results) {
+      ctx.lineWidth = Math.max(3, canvas.width / 200);
+      var fontSize = Math.max(24, canvas.width / 25);
+      ctx.font = "bold " + fontSize + "px sans-serif";
+
+      results.forEach(function(result, i) {
+        var pos = result.position;
+        if (!pos) return;
+
+        var points = [pos.topLeft, pos.topRight, pos.bottomRight, pos.bottomLeft];
+        if (!points[0]) return;
+
+        // Draw bounding polygon
+        ctx.strokeStyle = "#00ff88";
+        ctx.beginPath();
+        ctx.moveTo(points[0].x, points[0].y);
+        for (var j = 1; j < points.length; j++) {
+          ctx.lineTo(points[j].x, points[j].y);
+        }
+        ctx.closePath();
+        ctx.stroke();
+
+        // Draw label
+        var labelX = points[0].x;
+        var labelY = points[0].y - 8;
+        var text = "#" + (i + 1);
+        var metrics = ctx.measureText(text);
+        var padding = 6;
+        ctx.fillStyle = "rgba(0, 212, 255, 0.85)";
+        ctx.fillRect(
+          labelX - padding,
+          labelY - fontSize - padding,
+          metrics.width + padding * 2,
+          fontSize + padding * 2
+        );
+        ctx.fillStyle = "#000";
+        ctx.fillText(text, labelX, labelY);
+      });
+    }
+
+    function escapeHtml(str) {
+      var div = document.createElement("div");
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    function escapeAttr(str) {
+      return str
+        .replace(/&/g, "&amp;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+    }
+
+    // Camera functionality
+    function startCamera() {
+      navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment", width: { ideal: 1920 }, height: { ideal: 1080 } }
+      }).then(function(stream) {
+        cameraStream = stream;
+        cameraVideo.srcObject = stream;
+        cameraContainer.classList.add("visible");
+        setStatus("Camera active. Position barcodes in view and click Capture.", "");
+      }).catch(function(err) {
+        console.error("Camera error:", err);
+        setStatus("Could not access camera: " + err.message, "error");
+      });
+    }
+
+    function stopCamera() {
+      if (cameraStream) {
+        cameraStream.getTracks().forEach(function(track) { track.stop(); });
+        cameraStream = null;
+      }
+      cameraVideo.srcObject = null;
+      cameraContainer.classList.remove("visible");
+    }
+
+    function captureFrame() {
+      canvas.width = cameraVideo.videoWidth;
+      canvas.height = cameraVideo.videoHeight;
+      ctx.drawImage(cameraVideo, 0, 0);
+      stopCamera();
+      previewContainer.classList.add("visible");
+
+      if (!readBarcodes) {
+        setStatus("Library not loaded yet. Please wait or reload.", "error");
+        return;
+      }
+
+      setStatus("Scanning for barcodes...", "loading");
+      resultsDiv.innerHTML = "";
+      fwaSection.innerHTML = "";
+      fwaSection.classList.remove("visible");
+
+      var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+      readBarcodes(imageData, {
+        tryHarder: true,
+        formats: [],
+        maxNumberOfSymbols: 100,
+      }).then(function(results) {
+        if (results.length === 0) {
+          setStatus("No barcodes found. Try a clearer or larger image.", "error");
+          resultsDiv.innerHTML = '<p class="no-results">No barcodes detected in this image.</p>';
+          return;
+        }
+
+        setStatus(
+          "Found " + results.length + " barcode" + (results.length > 1 ? "s" : "") + "!",
+          "success"
+        );
+        displayResults(results);
+        displayFWA(results);
+        drawOverlays(results);
+      }).catch(function(err) {
+        console.error("Scan error:", err);
+        setStatus("Error scanning image: " + err.message, "error");
+      });
+    }
+
+    fileInput.addEventListener("change", function(e) {
+      processImage(e.target.files[0]);
+      e.target.value = "";
+    });
+
+    cameraBtn.addEventListener("click", startCamera);
+    captureBtn.addEventListener("click", captureFrame);
+    cancelCameraBtn.addEventListener("click", function() {
+      stopCamera();
+      setStatus("Ready. Upload or take a photo.", "");
+    });
+
+    // Init on load
+    initLibrary();
+  </script>
+</body>
+</html>
